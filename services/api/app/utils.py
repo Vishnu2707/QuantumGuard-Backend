@@ -1,18 +1,21 @@
+import hashlib, time
+from bson import ObjectId
+from .config import settings
+from .db import apilogs
 
-import time
-from fastapi import Request
-from .db import api_logs
-from typing import Optional
+def hash_api_key(api_key: str) -> str:
+    salt = settings.APIKEY_KDF_SALT.encode()
+    return hashlib.sha256(api_key.encode() + salt).hexdigest()
 
-async def log_api_call(user_id, endpoint: str, algorithm: Optional[str], status: int, started_at: float):
+async def log_api_call(user_id: str | None, endpoint: str, ok: bool, started: float):
+    doc = {
+        "userId": ObjectId(user_id) if user_id else None,
+        "endpoint": endpoint,
+        "ok": ok,
+        "rt_ms": int((time.time() - started) * 1000),
+        "ts": int(time.time()),
+    }
     try:
-        await api_logs.insert_one({
-            "user_id": user_id,
-            "endpoint": endpoint,
-            "algorithm": algorithm,
-            "status": status,
-            "latency_ms": int((time.time() - started_at) * 1000),
-            "ts": time.time()
-        })
+        await apilogs.insert_one(doc)
     except Exception:
         pass

@@ -1,20 +1,13 @@
-
-from pydantic_settings import BaseSettings
-from typing import List
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    MONGO_URI: str = "mongodb://localhost:27017/quantumguard"
+    MONGO_URI: str
     DB_NAME: str = "quantumguard"
-    JWT_SECRET: str = "changeme"
-    JWT_EXPIRE_MINUTES: int = 30
-    APIKEY_KDF_SALT: str = "changeme_salt"
-    APP_ENV: str = "development"
-    CORS_ORIGINS: str = "http://localhost:3000"
-    RATE_LIMITS_PQC: str = "10/second,2000/day"
+    JWT_SECRET: str
+    APIKEY_KDF_SALT: str
+    CORS_ORIGINS: str | None = None
+    ACCESS_TOKEN_TTL_SEC: int = 1800
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
-ALLOWED_ORIGINS: List[str] = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]

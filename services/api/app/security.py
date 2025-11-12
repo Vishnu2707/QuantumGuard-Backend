@@ -1,33 +1,49 @@
-
-from passlib.context import CryptContext
+import os
+import hashlib
+import secrets
+from datetime import datetime, timedelta
 from jose import jwt
-from datetime import datetime, timedelta, timezone
-import hmac, hashlib, secrets
+from passlib.context import CryptContext
 from .config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
+# ---------------------------------------
+# 🔑 Password Hashing and Verification
+# ---------------------------------------
+
 def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
     return pwd_context.hash(password)
 
-def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
 
-def create_jwt(sub: str) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
-    payload = {"sub": sub, "exp": exp}
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
+def verify_password(password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash."""
+    return pwd_context.verify(password, hashed_password)
 
-def verify_jwt(token: str) -> str | None:
-    try:
-        data = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
-        return data.get("sub")
-    except Exception:
-        return None
+
+# ---------------------------------------
+# 🪪 JWT Token Utilities
+# ---------------------------------------
+
+def create_access_token(subject: str) -> str:
+    """Generate a signed JWT token."""
+    expire = datetime.utcnow() + timedelta(hours=24)
+    to_encode = {"sub": subject, "exp": expire}
+    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm="HS256")
+
+
+# ---------------------------------------
+# 🗝️ API Key Utilities
+# ---------------------------------------
 
 def random_api_key() -> str:
-    # 256-bit urlsafe key
-    return secrets.token_urlsafe(32)
+    """Generate a new random API key (256-bit hex)."""
+    return secrets.token_hex(32)
+
 
 def hash_api_key(api_key: str) -> str:
-    return hmac.new(settings.APIKEY_KDF_SALT.encode(), api_key.encode(), hashlib.sha256).hexdigest()
+    """Hash an API key with HMAC-SHA256 and project salt."""
+    key_salt = bytes.fromhex(settings.APIKEY_KDF_SALT)
+    return hashlib.pbkdf2_hmac("sha256", api_key.encode(), key_salt, 100_000).hex()
